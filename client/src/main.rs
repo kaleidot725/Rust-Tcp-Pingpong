@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 
 fn main() -> std::io::Result<()> {
-    let mut stream = TcpStream::connect("192.168.0.1:30000")?;
+    let mut stream = TcpStream::connect("127.0.0.1:30000")?;
     let send_buffer = b"PING_PONG";
     let send_size = stream.write(send_buffer);
     return match send_size {
