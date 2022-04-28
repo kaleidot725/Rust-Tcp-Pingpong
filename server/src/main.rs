@@ -1,28 +1,53 @@
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 
+fn print(bytes: &[u8]) {
+    match std::str::from_utf8(bytes) {
+        Ok(string) => { println!("PRINT {}", string); }
+        Err(_) => { println!("PRINT ERROR") }
+    }
+}
+
 fn handle_client(mut stream: TcpStream) {
-    println!("START");
-    let mut receive_buffer = [0; 128];
+    let mut receive_buffer = [0; 4098];
+
+    println!("** STREAM START **");
     loop {
         match stream.read(&mut receive_buffer) {
-            Ok(_) => {
-                println!("Result: {}", receive_buffer.iter().map(|x| format!("{:02X}", x)).collect::<String>());
-                continue
+            Ok(received_size) => {
+                if received_size == 0 {
+                    return
+                }
+
+                let received_data = &receive_buffer[0..received_size];
+                match stream.write(received_data) {
+                    Ok(send_size) => {
+                        if send_size != received_size {
+                            println!("** STREAM RESEND ERROR **");
+                            return
+                        }
+
+                        println!("** STREAM PING PONG **");
+                        print(received_data);
+                    }
+                    Err(_) => {
+                        println!("** STREAM STOPPED (WRITE) **");
+                        return
+                    }
+                }
             }
             Err(_) => {
-                println!("ERROR");
-                break
+                println!("** STREAM STOPPED (READ) **");
+                return
             }
         }
     }
-    println!("END");
 }
 
 fn main() -> std::io::Result<()> {
+    println!("-- SERVER START --");
     let listener = TcpListener::bind("127.0.0.1:30000")?;
-    for stream in listener.incoming() {
-        handle_client(stream?);
-    }
+    for stream in listener.incoming() { handle_client(stream?); }
+    println!("-- SERVER STOPPED --");
     Ok(())
 }
